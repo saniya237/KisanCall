@@ -1,6 +1,4 @@
 from django.contrib import admin
-from .models import Farmer, CallSession, QueryLog
+from .models import FarmerQuery
 
-admin.site.register(Farmer)
-admin.site.register(CallSession)
-admin.site.register(QueryLog)
+admin.site.register(FarmerQuery)
