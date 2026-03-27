@@ -3,12 +3,11 @@ from rest_framework.routers import DefaultRouter
 from . import views
 
 router = DefaultRouter()
-router.register(r"farmers",  views.FarmerViewSet)
-router.register(r"sessions", views.CallSessionViewSet)
-router.register(r"queries",  views.QueryLogViewSet)
+router.register(r"queries", views.FarmerQueryViewSet)
 
 urlpatterns = [
-    path("session/start/", views.start_session),
-    path("query/process/", views.process_query),
+    path("", include(router.urls)),
+    path("process/", views.process_query),
     path("health/", views.health_check),
+    path("twilio-webhook/", views.twilio_webhook),  # New endpoint for Twilio calls
 ]
