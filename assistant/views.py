@@ -1,14 +1,18 @@
 from rest_framework import viewsets, status
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, parser_classes
+from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
 from django.utils import timezone
 import uuid
+import os
 
 from .models import Farmer, CallSession, QueryLog
 from .serializers import FarmerSerializer, CallSessionSerializer, QueryLogSerializer
 from openai import OpenAI
+from .speech import speech_to_text, text_to_speech
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+client = OpenAI(api_key=os.getenv("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"))
+
 # 🔥 SIMPLE TEST (NO AI FOR NOW)
 
 class FarmerViewSet(viewsets.ModelViewSet):
@@ -16,84 +20,37 @@ class FarmerViewSet(viewsets.ModelViewSet):
     serializer_class = FarmerSerializer
 
 
-class CallSessionViewSet(viewsets.ModelViewSet):
-    queryset = CallSession.objects.all().order_by("-started_at")
-    serializer_class = CallSessionSerializer
+# 🎤 PERSON 3: Speech to Text
+@api_view(['POST'])
+@parser_classes([MultiPartParser])
+def speech_to_text_view(request):
+    """
+    POST /api/stt/
+    Input: audio file (form-data, key = 'audio')
+    Output: { "text": "transcribed farmer query" }
+    """
+    if 'audio' not in request.FILES:
+        return Response({"error": "No audio file provided"}, status=400)
+
+    audio_file = request.FILES['audio']
+    text = speech_to_text(audio_file)
+
+    return Response({"text": text})
 
 
-class QueryLogViewSet(viewsets.ModelViewSet):
-    queryset = QueryLog.objects.all().order_by("-timestamp")
-    serializer_class = QueryLogSerializer
+# 🔊 PERSON 3: Text to Speech
+@api_view(['POST'])
+def text_to_speech_view(request):
+    """
+    POST /api/tts/
+    Input: { "text": "your response here" }
+    Output: { "audio_url": "/media/response_xyz.mp3" }
+    """
+    text = request.data.get("text", "")
 
+    if not text:
+        return Response({"error": "No text provided"}, status=400)
 
-@api_view(["POST"])
-def process_query(request):
-    session_id = request.data.get("session_id")
-    user_query = request.data.get("user_query", "").strip()
+    audio_path = text_to_speech(text)
 
-    if not session_id or not user_query:
-        return Response({"error": "session_id and user_query required"}, status=400)
-
-    try:
-        session = CallSession.objects.get(session_id=session_id)
-    except CallSession.DoesNotExist:
-        return Response({"error": "Session not found"}, status=404)
-
-    # --- AI Integration ---
-@api_view(["POST"])
-def process_query(request):
-    session_id = request.data.get("session_id")
-    user_query = request.data.get("user_query", "").strip()
-
-    if not session_id or not user_query:
-        return Response({"error": "session_id and user_query required"}, status=400)
-
-    try:
-        session = CallSession.objects.get(session_id=session_id)
-    except CallSession.DoesNotExist:
-        return Response({"error": "Session not found"}, status=404)
-
-    
-    response = client.responses.create(
-        model="gpt-4o-mini",
-        input=user_query
-    )
-
-    ai_response = response.output[0].content[0].text
-    return Response({
-        "query": user_query,
-        "response": ai_response
-    })
-    
-
-    log = QueryLog.objects.create(
-        session=session,
-        user_query=user_query,
-        ai_response=ai_response
-    )
-
-    return Response(QueryLogSerializer(log).data, status=201)
-@api_view(["POST"])
-def start_session(request):
-    phone = request.data.get("phone")
-
-    if not phone:
-        return Response({"error": "phone is required"}, status=400)
-
-    try:
-        farmer = Farmer.objects.get(phone=phone)
-    except Farmer.DoesNotExist:
-        return Response({"error": "Farmer not found"}, status=404)
-
-    session = CallSession.objects.create(
-        farmer=farmer,
-        session_id=str(uuid.uuid4()),
-        status="active"
-    )
-
-    return Response(CallSessionSerializer(session).data, status=201)
-
-
-@api_view(["GET"])
-def health_check(request):
-    return Response({"status": "OK"})
+    return Response({"audio_url": f"/{audio_path}"})
