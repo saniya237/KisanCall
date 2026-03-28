@@ -4,7 +4,7 @@ from . import views
 
 router = DefaultRouter()
 router.register(r"farmers",  views.FarmerViewSet)
-#router.register(r"sessions", views.CallSessionViewSet)
+router.register(r"sessions", views.CallSessionViewSet)
 router.register(r"queries",  views.QueryLogViewSet)
 
 urlpatterns = [
