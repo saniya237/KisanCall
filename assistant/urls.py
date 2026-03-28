@@ -11,4 +11,8 @@ urlpatterns = [
     path("session/start/", views.start_session),
     path("query/process/", views.process_query),
     path("health/", views.health_check),
+
+    # 🎤 PERSON 3: Speech endpoints
+    path("stt/", views.speech_to_text_view),
+    path("tts/", views.text_to_speech_view),
 ]
